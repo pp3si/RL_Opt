@@ -3,6 +3,7 @@ import pandas as pd
 import gymnasium as gym
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.evaluation import evaluate_policy
+import imageio
 
 class OptimalTreeReinforcementLearning:
 
@@ -31,17 +32,27 @@ class OptimalTreeReinforcementLearning:
         predict_input = pd.DataFrame({
             name: observation[ind]
             for ind, name in enumerate(self.state_names)
-        })
-
+            }, index=[0])
         action = self.lnr.predict(predict_input)
-        vectorized_action = [self.action_names_dict[act] for act in action]
-        
+        vectorized_action = [self.action_names_dict[act] for act in action]        
         return vectorized_action, None
     
     def get_names(self, observation, action_rewards):
         self.state_names = observation.columns
         self.action_names = action_rewards.columns
         self.action_names_dict = {name: ind for ind, name in enumerate(self.action_names)}
+
+    def render_episode(self, env, path="render_animation.gif", fps=20, loop=0):
+
+        state, _ = env.reset()
+        frames = [env.render()]
+        while True:
+            action, _ = self.predict(state)
+            state, _, done, _, _ = env.step(action[0])
+            frames.append(env.render())
+            if done:
+                break
+        imageio.mimwrite(path, frames, fps=fps, loop=loop)
 
 class OTRLClassifier(OptimalTreeReinforcementLearning):
 
@@ -79,8 +90,10 @@ oct = OTRLPolicy()
 oct.fit(states_df, rewards_df, max_depths=[4, 5], min_buckets=[1])
 oct.lnr.write_html("tree.html")
 
-env = Monitor(gym.make("Blackjack-v1", sab=True), "eval_logs/")
+env = Monitor(gym.make("Blackjack-v1", sab=True, render_mode="rgb_array"), "eval_logs/")
 
 mean_reward, std_reward = evaluate_policy(oct, env, n_eval_episodes=1_000)
 
 print(mean_reward, std_reward)
+
+oct.render_episode(env, fps=1)
