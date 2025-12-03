@@ -140,6 +140,21 @@ class OTRLPretrained(OptimalTreeReinforcementLearning):
         self.action_names = data["rl_action_names"]
         self.action_names_dict = {name: ind for ind, name in enumerate(self.action_names)}
 
+class EnumeratedPolicy(OptimalTreeReinforcementLearning):
+
+    def __init__(self, observations, actions, state_names, action_names):
+
+        self.policy = {
+            obs: act
+            for obs, act in zip(observations, actions)
+        }
+        self.state_names = state_names
+        self.action_names = action_names
+        self.action_names_dict = {name: ind for ind, name in enumerate(self.action_names)}
+
+    def predict(self, observation, state=None, episode_start=None, deterministic=True):
+        return [self.policy[observation]]
+
 # import gymnasium as gym
 # from stable_baselines3.common.monitor import Monitor
 
