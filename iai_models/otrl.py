@@ -1,24 +1,35 @@
 import pandas as pd
+import numpy as np
 import json
 import imageio
 
 class OptimalTreeReinforcementLearning:
 
     def fit(self, observation, action_rewards,
-            max_depths=None, min_buckets=None):
+            max_depths=None, min_buckets=None, hyperplane_config=None):
         pass
 
     def fit_oct(self, observation, target_actions, sample_weights=None,
-                max_depths=None, min_buckets=None):
+                max_depths=None, min_buckets=None, hyperplane_config=None):
 
         from interpretableai import iai
 
         max_depths = max_depths or range(1, 8)
         min_buckets = min_buckets or [1]
 
-        grid = iai.GridSearch(
+        if hyperplane_config is None:
+            grid = iai.GridSearch(
+                iai.OptimalTreeClassifier(
+                    weighted_minbucket=0
+                ),
+                max_depth=max_depths,
+                minbucket=min_buckets
+            )
+        else:
+            grid = iai.GridSearch(
             iai.OptimalTreeClassifier(
-                weighted_minbucket=0
+                weighted_minbucket=0,
+                hyperplane_config=hyperplane_config
             ),
             max_depth=max_depths,
             minbucket=min_buckets
@@ -40,12 +51,18 @@ class OptimalTreeReinforcementLearning:
         self.lnr.write_html(filename)
 
     def predict(self, observation, state=None, episode_start=None, deterministic=True):
-        predict_input = pd.DataFrame({
-            name: observation[ind]
-            for ind, name in enumerate(self.state_names)
-            }, index=[0])
+        # predict_input = pd.DataFrame({
+        #     name: observation[ind]
+        #     for ind, name in enumerate(self.state_names)
+        #     }, index=[0])
+        predict_input = pd.DataFrame(np.array(observation))
+        if len(predict_input.columns) != len(self.state_names):
+            predict_input = predict_input.T
+            predict_input.columns = self.state_names
+        else:
+            predict_input.columns = self.state_names
         action = self.lnr.predict(predict_input)
-        vectorized_action = [self.action_names_dict[act] for act in action]                
+        vectorized_action = [self.action_names_dict[act] for act in action]
         return vectorized_action
  
     def get_names(self, observation, action_rewards):
@@ -77,17 +94,17 @@ class OptimalTreeReinforcementLearning:
 
 class OTRLClassifier(OptimalTreeReinforcementLearning):
 
-    def fit(self, observation, action_rewards, max_depths=None, min_buckets=None):
+    def fit(self, observation, action_rewards, max_depths=None, min_buckets=None, hyperplane_config=None):
 
         self.get_names(observation, action_rewards)
 
         target_actions = action_rewards.idxmax(axis=1)
 
-        self.fit_oct(observation, target_actions, max_depths=max_depths, min_buckets=min_buckets)
+        self.fit_oct(observation, target_actions, max_depths=max_depths, min_buckets=min_buckets, hyperplane_config=hyperplane_config)
 
 class OTRLPolicy(OptimalTreeReinforcementLearning):
 
-    def fit(self, observation, action_rewards, max_depths=None, min_buckets=None):
+    def fit(self, observation, action_rewards, max_depths=None, min_buckets=None, hyperplane_config=None):
 
         self.get_names(observation, action_rewards)
         min_rewards = action_rewards.min(axis=1)
@@ -102,11 +119,11 @@ class OTRLPolicy(OptimalTreeReinforcementLearning):
         sample_weights = sample_weights.loc[keep_rows]
 
         self.fit_oct(observation_stack, target_action_stack, sample_weights,
-                     max_depths, min_buckets)
+                     max_depths, min_buckets, hyperplane_config)
         
 class OTRLPolicyShelf(OptimalTreeReinforcementLearning):
 
-    def fit(self, observation, action_rewards, max_depths=None, min_buckets=None):
+    def fit(self, observation, action_rewards, max_depths=None, min_buckets=None, hyperplane_config=None):
 
         from interpretableai import iai
 
@@ -115,11 +132,20 @@ class OTRLPolicyShelf(OptimalTreeReinforcementLearning):
         max_depths = max_depths or range(1, 7)
         min_buckets = min_buckets or [1]
 
-        grid = iai.GridSearch(
-            iai.OptimalTreePolicyMaximizer(),
-            max_depth=max_depths,
-            minbucket=min_buckets
-        )
+        if hyperplane_config is None:
+            grid = iai.GridSearch(
+                iai.OptimalTreePolicyMaximizer(),
+                max_depth=max_depths,
+                minbucket=min_buckets
+            )
+        else:
+            grid = iai.GridSearch(
+                iai.OptimalTreePolicyMaximizer(
+                    hyperplane_config=hyperplane_config
+                ),
+                max_depth=max_depths,
+                minbucket=min_buckets
+            )
 
         grid.fit(observation, action_rewards)
         self.lnr = grid.get_learner()
@@ -145,7 +171,7 @@ class EnumeratedPolicy(OptimalTreeReinforcementLearning):
     def __init__(self, observations, actions, state_names, action_names):
 
         self.policy = {
-            obs: act
+            obs: int(act)
             for obs, act in zip(observations, actions)
         }
         self.state_names = state_names
@@ -153,6 +179,7 @@ class EnumeratedPolicy(OptimalTreeReinforcementLearning):
         self.action_names_dict = {name: ind for ind, name in enumerate(self.action_names)}
 
     def predict(self, observation, state=None, episode_start=None, deterministic=True):
+        observation = tuple([elm if not isinstance(elm, np.ndarray) else elm.item() for elm in observation])
         return [self.policy[observation]]
 
 # import gymnasium as gym

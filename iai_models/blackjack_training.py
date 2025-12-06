@@ -16,5 +16,5 @@ models_dict = {
 for name, model in models_dict.items():
     print(f"Training {name} . . .")
     model.fit(states_df, rewards_df, max_depths=range(5), min_buckets=[1])
-    model.save_model_json(f"iai_models/trained/blackjack/json/{name}.json")
-    model.save_tree_html(f"iai_models/trained/blackjack/html/{name}.html")
+    model.save_model_json(f"iai_models/blackjack/json/{name}.json")
+    model.save_tree_html(f"iai_models/blackjack/html/{name}.html")
