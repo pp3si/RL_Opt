@@ -50,6 +50,9 @@ class OptimalTreeReinforcementLearning:
     def save_tree_html(self, filename):
         self.lnr.write_html(filename)
 
+    def get_actions(self, observation):
+        return self.predict(observation)[0]
+
     def predict(self, observation, state=None, episode_start=None, deterministic=True):
         # predict_input = pd.DataFrame({
         #     name: observation[ind]
@@ -181,6 +184,16 @@ class EnumeratedPolicy(OptimalTreeReinforcementLearning):
     def predict(self, observation, state=None, episode_start=None, deterministic=True):
         observation = tuple([elm if not isinstance(elm, np.ndarray) else elm.item() for elm in observation])
         return [self.policy[observation]]
+    
+class TunnelVisionPolicy(OptimalTreeReinforcementLearning):
+
+    def __init__(self, action_ind, action_name):
+        self.action_ind = action_ind
+        self.action_name = action_name
+
+    def predict(self, observation, state=None, episode_start=None, deterministic=True):
+        return [self.action_ind]
+
 
 # import gymnasium as gym
 # from stable_baselines3.common.monitor import Monitor

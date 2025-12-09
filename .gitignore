@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 rl-baselines3-zoo
+rl-baselines3-zoo/
 eval_logs
 test
 .RL_Opt

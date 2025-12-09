@@ -11,7 +11,7 @@ rewards_df = pd.read_csv("pretrained_models/lunar_lander/ll_outcomes_with_action
 action_df = (rewards_df.eq(rewards_df.max(axis=1), axis=0)).astype(int)
 
 # Train/test split
-train_size = 10_000
+train_size = 20_000
 states_train, states_test, rewards_train, rewards_test, action_train, action_test = train_test_split(
     states_df, rewards_df, action_df, test_size=(len(states_df.index) - train_size)
 )
